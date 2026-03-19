@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 import { Renderer } from '../renderer/Renderer';
 import { Physics } from '../physics/Physics';
 import { Vehicle } from '../vehicle/Vehicle';
@@ -209,7 +210,7 @@ export class Game {
         this.physics.createBox(`obstacle_${i}`, width, height / 2, length, {
           mass: 0,
           position: { x, y: height / 4, z },
-          rotation: { x: -Math.PI / 8, y: Math.random() * Math.PI * 2, z: 0 },
+          rotation: { x: -Math.PI / 8, y: Math.random() * Math.PI * 2, z: 0, w: 1 },
           material: 'obstacle',
         });
       }

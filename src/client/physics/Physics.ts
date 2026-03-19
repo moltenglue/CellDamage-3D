@@ -37,9 +37,11 @@ export class Physics {
         config?.gravity?.y || GRAVITY,
         config?.gravity?.z || 0
       ),
-      iterations: config?.iterations || 10,
-      tolerance: config?.tolerance || 0.001,
     });
+    
+    // Set solver iterations
+    (this.world.solver as any).iterations = config?.iterations || 10;
+    (this.world.solver as any).tolerance = config?.tolerance || 0.001;
 
     // Setup broadphase
     this.world.broadphase = new CANNON.SAPBroadphase(this.world);
@@ -268,7 +270,7 @@ export class Physics {
       result,
     });
 
-    if (result.hasHit) {
+    if (result.hasHit && result.body) {
       return {
         body: result.body,
         point: { x: result.hitPointWorld.x, y: result.hitPointWorld.y, z: result.hitPointWorld.z },

@@ -1,4 +1,5 @@
-import { WeaponType, Vector3 } from '../../shared/types';
+import { WeaponType } from '../../shared/types';
+import * as THREE from 'three';
 import { BaseWeapon, FireResult, WeaponConfig } from './BaseWeapon';
 
 export class RocketLauncher extends BaseWeapon {
@@ -6,7 +7,7 @@ export class RocketLauncher extends BaseWeapon {
     super({ ...config, type: 'rocketlauncher' });
   }
 
-  public fire(ownerId: string, position: Vector3, direction: Vector3): FireResult {
+  public fire(ownerId: string, position: THREE.Vector3, direction: THREE.Vector3): FireResult {
     if (!this.canFire()) {
       return {
         projectiles: [],
@@ -21,9 +22,11 @@ export class RocketLauncher extends BaseWeapon {
     // Create projectile with explosion radius
     const projectile = this.createProjectile({
       ownerId,
-      position,
+      position: { x: position.x, y: position.y, z: position.z },
       direction: spreadDir,
       weaponType: this.type,
+      speed: this.stats.projectileSpeed,
+      damage: this.stats.damage,
     });
 
     // Update state
@@ -31,7 +34,7 @@ export class RocketLauncher extends BaseWeapon {
     this.lastFireTime = Date.now();
 
     // Larger muzzle flash for rocket
-    this.spawnMuzzleFlash(position, direction);
+    this.spawnMuzzleFlash({ x: position.x, y: position.y, z: position.z }, { x: direction.x, y: direction.y, z: direction.z });
 
     return {
       projectiles: [projectile],

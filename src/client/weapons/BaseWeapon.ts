@@ -37,7 +37,7 @@ export abstract class BaseWeapon {
     this.renderer = config.renderer;
   }
 
-  public abstract fire(ownerId: string, position: Vector3, direction: Vector3): FireResult;
+  public abstract fire(ownerId: string, position: THREE.Vector3, direction: THREE.Vector3): FireResult;
 
   protected canFire(): boolean {
     if (this.isReloading) {
@@ -72,7 +72,7 @@ export abstract class BaseWeapon {
     return new Projectile(projectileConfig, this.physics);
   }
 
-  protected applySpread(direction: Vector3, spreadAngle: number): Vector3 {
+  protected applySpread(direction: THREE.Vector3, spreadAngle: number): { x: number; y: number; z: number } {
     // Convert spread angle to random offset
     const spreadRad = spreadAngle * (Math.random() - 0.5) * 2;
     const verticalSpread = spreadAngle * (Math.random() - 0.5) * 2;
@@ -94,7 +94,7 @@ export abstract class BaseWeapon {
     return { x: dir.x, y: dir.y, z: dir.z };
   }
 
-  protected spawnMuzzleFlash(position: Vector3, direction: Vector3): void {
+  protected spawnMuzzleFlash(position: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }): void {
     if (this.renderer) {
       const pos = new THREE.Vector3(position.x, position.y, position.z);
       const dir = new THREE.Vector3(direction.x, direction.y, direction.z);

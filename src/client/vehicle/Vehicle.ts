@@ -391,10 +391,10 @@ export class Vehicle {
       
       if (this.wheelMeshes[i]) {
         this.wheelBodies[i].position.copy(transform.position);
-        this.wheelBodies[i].quaternion.copy(transform.rotation);
+        this.wheelBodies[i].quaternion.copy(transform.quaternion);
         
         this.wheelMeshes[i].position.copy(transform.position as unknown as THREE.Vector3);
-        this.wheelMeshes[i].quaternion.copy(transform.rotation as unknown as THREE.Quaternion);
+        this.wheelMeshes[i].quaternion.copy(transform.quaternion as unknown as THREE.Quaternion);
       }
     }
   }

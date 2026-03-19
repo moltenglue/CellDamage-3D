@@ -1,4 +1,5 @@
-import { WeaponType, Vector3 } from '../../shared/types';
+import { WeaponType } from '../../shared/types';
+import * as THREE from 'three';
 import { BaseWeapon, FireResult, WeaponConfig } from './BaseWeapon';
 
 export class Shotgun extends BaseWeapon {
@@ -8,7 +9,7 @@ export class Shotgun extends BaseWeapon {
     super({ ...config, type: 'shotgun' });
   }
 
-  public fire(ownerId: string, position: Vector3, direction: Vector3): FireResult {
+  public fire(ownerId: string, position: THREE.Vector3, direction: THREE.Vector3): FireResult {
     if (!this.canFire()) {
       return {
         projectiles: [],
@@ -37,6 +38,8 @@ export class Shotgun extends BaseWeapon {
         position: variedPos,
         direction: spreadDir,
         weaponType: this.type,
+        speed: this.stats.projectileSpeed,
+        damage: this.stats.damage / Shotgun.PELLET_COUNT,
       });
 
       projectiles.push(projectile);
@@ -47,7 +50,7 @@ export class Shotgun extends BaseWeapon {
     this.lastFireTime = Date.now();
 
     // Muzzle flash
-    this.spawnMuzzleFlash(position, direction);
+    this.spawnMuzzleFlash({ x: position.x, y: position.y, z: position.z }, { x: direction.x, y: direction.y, z: direction.z });
 
     return {
       projectiles,
