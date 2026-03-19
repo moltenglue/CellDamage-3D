@@ -18,6 +18,7 @@ export interface CollisionEvent {
   bodyB: CANNON.Body;
   contact: CANNON.ContactEquation;
   velocity: number;
+  contactPoint?: CANNON.Vec3;
 }
 
 type CollisionCallback = (event: CollisionEvent) => void;

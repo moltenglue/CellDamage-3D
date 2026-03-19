@@ -315,6 +315,126 @@ export class Renderer {
     animateFlash();
   }
 
+  // Crumple zone debris effect
+  public createDebris(position: THREE.Vector3, intensity: number): void {
+    const debrisCount = Math.min(20, Math.max(5, intensity / 5));
+    
+    for (let i = 0; i < debrisCount; i++) {
+      const size = 0.05 + Math.random() * 0.1;
+      const geometry = new THREE.BoxGeometry(size, size, size);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x555555,
+        roughness: 0.8,
+        metalness: 0.4
+      });
+      const debris = new THREE.Mesh(geometry, material);
+      
+      debris.position.copy(position);
+      debris.position.x += (Math.random() - 0.5) * 0.5;
+      debris.position.y += (Math.random() - 0.5) * 0.5;
+      debris.position.z += (Math.random() - 0.5) * 0.5;
+      
+      this.scene.add(debris);
+
+      // Random velocity
+      const velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 10,
+        Math.random() * 10 + 5,
+        (Math.random() - 0.5) * 10
+      );
+
+      let frame = 0;
+      const animateDebris = () => {
+        frame++;
+        debris.position.add(velocity.clone().multiplyScalar(0.016));
+        velocity.y -= 9.8 * 0.016; // Gravity
+        debris.rotation.x += Math.random() * 0.2;
+        debris.rotation.y += Math.random() * 0.2;
+
+        if (frame < 120 && debris.position.y > -1) {
+          requestAnimationFrame(animateDebris);
+        } else {
+          this.scene.remove(debris);
+          geometry.dispose();
+          material.dispose();
+        }
+      };
+      
+      animateDebris();
+    }
+  }
+
+  // Tire smoke for drifting
+  public createTireSmoke(position: THREE.Vector3): void {
+    const geometry = new THREE.SphereGeometry(0.3, 8, 8);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xaaaaaa,
+      transparent: true,
+      opacity: 0.4
+    });
+    const smoke = new THREE.Mesh(geometry, material);
+    smoke.position.copy(position);
+    smoke.position.y += 0.2;
+    this.scene.add(smoke);
+
+    let frame = 0;
+    const animateSmoke = () => {
+      frame++;
+      smoke.scale.multiplyScalar(1.05);
+      smoke.position.y += 0.02;
+      material.opacity = 0.4 * (1 - frame / 60);
+
+      if (frame < 60) {
+        requestAnimationFrame(animateSmoke);
+      } else {
+        this.scene.remove(smoke);
+        geometry.dispose();
+        material.dispose();
+      }
+    };
+    
+    animateSmoke();
+  }
+
+  // Turbo flame effect
+  public createTurboFlame(position: THREE.Vector3): void {
+    // Create multiple flame particles
+    for (let i = 0; i < 5; i++) {
+      const geometry = new THREE.ConeGeometry(0.15, 0.8, 8);
+      const material = new THREE.MeshBasicMaterial({
+        color: i % 2 === 0 ? 0xff4400 : 0xffaa00,
+        transparent: true,
+        opacity: 0.8
+      });
+      const flame = new THREE.Mesh(geometry, material);
+      
+      flame.position.copy(position);
+      flame.position.x += (Math.random() - 0.5) * 0.3;
+      flame.position.z -= 0.5 + Math.random() * 0.5;
+      flame.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
+      
+      this.scene.add(flame);
+
+      let frame = 0;
+      const animateFlame = () => {
+        frame++;
+        flame.scale.multiplyScalar(1.1);
+        flame.position.z -= 0.1;
+        material.opacity = 0.8 * (1 - frame / 30);
+
+        if (frame < 30) {
+          requestAnimationFrame(animateFlame);
+        } else {
+          this.scene.remove(flame);
+          geometry.dispose();
+          material.dispose();
+        }
+      };
+      
+      animateFlame();
+    }
+  }
+
   public getMesh(id: string): THREE.Object3D | undefined {
     return this.meshes.get(id);
   }
