@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CellDamage 3D - Vehicular Combat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      overflow: hidden;
+    }
+    
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    
+    #ui {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+    }
+    
+    #hud {
+      display: none;
+      padding: 20px;
+    }
+    
+    #health-bar {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      width: 250px;
+      height: 30px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #444;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    
+    #health-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ff3333, #ff6666);
+      transition: width 0.3s ease;
+    }
+    
+    #health-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    }
+    
+    #ammo-counter {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      text-align: right;
+    }
+    
+    #ammo-count {
+      font-size: 36px;
+      font-weight: bold;
+      color: #ffcc00;
+    }
+    
+    #weapon-name {
+      font-size: 14px;
+      color: #aaa;
+      text-transform: uppercase;
+    }
+    
+    #score-display {
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    
+    #timer {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+    }
+    
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+    }
+    
+    #crosshair::before,
+    #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 255, 255, 0.8);
+    }
+    
+    #crosshair::before {
+      width: 2px;
+      height: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    
+    #crosshair::after {
+      width: 20px;
+      height: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    
+    #menu {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      z-index: 200;
+    }
+    
+    #menu h1 {
+      font-size: 72px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      background: linear-gradient(90deg, #ff3333, #ffcc00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    #menu .subtitle {
+      font-size: 18px;
+      color: #aaa;
+      margin-bottom: 40px;
+    }
+    
+    .menu-section {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      min-width: 300px;
+    }
+    
+    .menu-section h2 {
+      margin-bottom: 20px;
+      color: #ffcc00;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #aaa;
+    }
+    
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      font-size: 14px;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 5px;
+      background: linear-gradient(90deg, #ff3333, #ff6666);
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(255, 51, 51, 0.5);
+    }
+    
+    .btn:disabled {
+      background: #444;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    #controls-help {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+      font-size: 14px;
+      color: #888;
+    }
+    
+    #controls-help h3 {
+      color: #ffcc00;
+      margin-bottom: 10px;
+    }
+    
+    #controls-help ul {
+      list-style: none;
+    }
+    
+    #controls-help li {
+      margin-bottom: 5px;
+    }
+    
+    #controls-help .key {
+      color: #fff;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    
+    #game-over {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      z-index: 300;
+    }
+    
+    #game-over h2 {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    
+    #winner-display {
+      font-size: 24px;
+      margin-bottom: 40px;
+      color: #ffcc00;
+    }
+    
+    #loading {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 400;
+    }
+    
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #ff3333;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    #notification {
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 16px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    
+    #notification.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="ui">
+      <div id="hud">
+        <div id="health-bar">
+          <div id="health-fill"></div>
+          <span id="health-text">100%</span>
+        </div>
+        <div id="ammo-counter">
+          <div id="ammo-count">∞</div>
+          <div id="weapon-name">Machine Gun</div>
+        </div>
+        <div id="score-display">Score: 0</div>
+        <div id="timer">10:00</div>
+        <div id="crosshair"></div>
+      </div>
+      
+      <div id="menu">
+        <h1>CellDamage 3D</h1>
+        <div class="subtitle">Vehicular Combat Arena</div>
+        
+        <div class="menu-section">
+          <h2>Game Setup</h2>
+          <div class="form-group">
+            <label for="player-name">Player Name</label>
+            <input type="text" id="player-name" value="Player 1" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label for="vehicle-type">Vehicle Type</label>
+            <select id="vehicle-type">
+              <option value="balanced">Balanced - Good all-rounder</option>
+              <option value="speedster">Speedster - Fast but fragile</option>
+              <option value="tank">Tank - Slow but durable</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="game-mode">Game Mode</label>
+            <select id="game-mode">
+              <option value="deathmatch">Deathmatch</option>
+              <option value="team">Team Battle</option>
+              <option value="survival">Survival</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="ai-count">AI Opponents</label>
+            <select id="ai-count">
+              <option value="3">3 AI Players</option>
+              <option value="5" selected>5 AI Players</option>
+              <option value="7">7 AI Players</option>
+            </select>
+          </div>
+          <button class="btn" id="start-btn">Start Game</button>
+        </div>
+        
+        <div id="controls-help">
+          <h3>Controls</h3>
+          <ul>
+            <li><span class="key">W</span> / <span class="key">S</span> - Accelerate / Brake</li>
+            <li><span class="key">A</span> / <span class="key">D</span> - Turn Left / Right</li>
+            <li><span class="key">SPACE</span> - Handbrake</li>
+            <li><span class="key">MOUSE</span> - Aim</li>
+            <li><span class="key">LMB</span> - Fire Weapon</li>
+            <li><span class="key">R</span> - Reload</li>
+          </ul>
+        </div>
+      </div>
+      
+      <div id="game-over">
+        <h2>Game Over!</h2>
+        <div id="winner-display"></div>
+        <button class="btn" id="restart-btn">Play Again</button>
+      </div>
+      
+      <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading...</div>
+      </div>
+      
+      <div id="notification"></div>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/client/main.ts"></script>
+</body>
+</html>
