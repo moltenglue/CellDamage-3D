@@ -1,0 +1,206 @@
+name: CI - Test & Audit
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type check
+        run: npm run typecheck
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test:ci
+        env:
+          CI: true
+
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v3
+        if: matrix.node-version == '20.x'
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+
+      - name: Build project
+        run: npm run build
+
+      - name: Test build artifacts exist
+        run: |
+          test -f dist/client/index.html
+          test -f dist/server/index.js
+          echo "✓ Build artifacts verified"
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run integration tests
+        run: |
+          npm run build
+          npm run test -- --testPathPattern="integration"
+        continue-on-error: true
+
+  docker-test:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t celldamage-3d:test .
+          echo "✓ Docker image built"
+
+      - name: Test Docker container starts
+        run: |
+          docker run -d --name test-container -p 3000:3000 celldamage-3d:test
+          sleep 5
+          docker ps | grep test-container
+          echo "✓ Container running"
+
+      - name: Test health endpoint
+        run: |
+          curl -f http://localhost:3000/health || echo "Health check not implemented yet"
+        continue-on-error: true
+
+      - name: Cleanup
+        run: |
+          docker stop test-container || true
+          docker rm test-container || true
+
+  code-audit:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install OpenCode
+        run: |
+          curl -fsSL https://opencode.ai/install.sh | bash
+          export PATH="$HOME/.local/bin:$PATH"
+
+      - name: Run GLM-5 Code Audit
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          
+          echo "=== Running GLM-5 Security & Quality Audit ==="
+          
+          # Create audit prompt
+          cat > /tmp/audit_prompt.txt << 'EOF'
+          Please audit this TypeScript game codebase for:
+          1. Security vulnerabilities (XSS, injection, unsafe eval, etc.)
+          2. Performance issues (memory leaks, unnecessary allocations)
+          3. Code quality (unused imports, dead code, complexity)
+          4. Type safety issues
+          5. Best practices for Three.js and Cannon.js
+          
+          Focus on:
+          - src/client/game/Game.ts
+          - src/client/vehicle/Vehicle.ts
+          - src/client/physics/Physics.ts
+          - src/server/index.ts
+          
+          Provide specific line-by-line recommendations where applicable.
+          EOF
+          
+          # Run audit with GLM-5
+          opencode run -m opencode-go/glm-5 \
+            --task "$(cat /tmp/audit_prompt.txt)" \
+            --project . \
+            > /tmp/audit_results.txt 2>&1 || true
+          
+          echo "=== Audit Results ==="
+          cat /tmp/audit_results.txt
+          
+          # Check for critical issues
+          if grep -i "critical\|severe\|high severity" /tmp/audit_results.txt; then
+            echo "⚠️ Critical issues found!"
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: glm5-audit-results
+          path: /tmp/audit_results.txt
+          retention-days: 30
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: typescript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
