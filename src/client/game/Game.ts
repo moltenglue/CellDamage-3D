@@ -74,6 +74,15 @@ export class Game {
   private mapSize: number;
   private spawnPoints: Vector3[] = [];
 
+  // Event handlers (stored for cleanup)
+  private boundKeyDownHandler: (e: KeyboardEvent) => void;
+  private boundKeyUpHandler: (e: KeyboardEvent) => void;
+  private boundMouseMoveHandler: (e: MouseEvent) => void;
+  private boundMouseDownHandler: (e: MouseEvent) => void;
+  private boundMouseUpHandler: (e: MouseEvent) => void;
+  private boundContextMenuHandler: (e: MouseEvent) => void;
+  private boundBlurHandler: () => void;
+
   constructor(config: GameConfig, callbacks: GameCallbacks = {}) {
     this.config = config;
     this.callbacks = callbacks;
@@ -105,6 +114,15 @@ export class Game {
     // Create local player
     this.localPlayerId = generateId();
     this.localVehicleId = `vehicle_${this.localPlayerId}`;
+
+    // Bind event handlers (for proper cleanup)
+    this.boundKeyDownHandler = (e: KeyboardEvent) => this.handleKeyDown(e.key.toLowerCase());
+    this.boundKeyUpHandler = (e: KeyboardEvent) => this.handleKeyUp(e.key.toLowerCase());
+    this.boundMouseMoveHandler = this.handleMouseMove.bind(this);
+    this.boundMouseDownHandler = this.handleMouseDown.bind(this);
+    this.boundMouseUpHandler = this.handleMouseUp.bind(this);
+    this.boundContextMenuHandler = (e: MouseEvent) => e.preventDefault();
+    this.boundBlurHandler = this.handleBlur.bind(this);
 
     // Setup input handling
     this.setupInputHandlers();
@@ -278,35 +296,35 @@ export class Game {
   }
 
   private setupInputHandlers(): void {
-    // Keyboard
-    window.addEventListener('keydown', (e) => {
-      this.handleKeyDown(e.key.toLowerCase());
-    });
+    // Keyboard - use bound handlers for proper cleanup
+    window.addEventListener('keydown', this.boundKeyDownHandler);
+    window.addEventListener('keyup', this.boundKeyUpHandler);
 
-    window.addEventListener('keyup', (e) => {
-      this.handleKeyUp(e.key.toLowerCase());
-    });
-
-    // Mouse
-    window.addEventListener('mousemove', (e) => {
-      this.inputState.aimX = (e.clientX / window.innerWidth) * 2 - 1;
-      this.inputState.aimY = -(e.clientY / window.innerHeight) * 2 + 1;
-    });
-
-    window.addEventListener('mousedown', (e) => {
-      if (e.button === 0) {
-        this.inputState.fire = true;
-      }
-    });
-
-    window.addEventListener('mouseup', (e) => {
-      if (e.button === 0) {
-        this.inputState.fire = false;
-      }
-    });
+    // Mouse - use bound handlers
+    window.addEventListener('mousemove', this.boundMouseMoveHandler);
+    window.addEventListener('mousedown', this.boundMouseDownHandler);
+    window.addEventListener('mouseup', this.boundMouseUpHandler);
 
     // Prevent context menu
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
+    window.addEventListener('contextmenu', this.boundContextMenuHandler);
+
+    // Handle window blur (release all keys)
+    window.addEventListener('blur', this.boundBlurHandler);
+  }
+
+  private handleBlur(): void {
+    // Release all keys when window loses focus
+    this.keysPressed.clear();
+    this.inputState = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+      brake: false,
+      fire: false,
+      aimX: 0,
+      aimY: 0,
+    };
   }
 
   private handleKeyDown(key: string): void {
@@ -317,6 +335,23 @@ export class Game {
   private handleKeyUp(key: string): void {
     this.keysPressed.delete(key);
     this.updateInputState();
+  }
+
+  private handleMouseMove(e: MouseEvent): void {
+    this.inputState.aimX = (e.clientX / window.innerWidth) * 2 - 1;
+    this.inputState.aimY = -(e.clientY / window.innerHeight) * 2 + 1;
+  }
+
+  private handleMouseDown(e: MouseEvent): void {
+    if (e.button === 0) {
+      this.inputState.fire = true;
+    }
+  }
+
+  private handleMouseUp(e: MouseEvent): void {
+    if (e.button === 0) {
+      this.inputState.fire = false;
+    }
   }
 
   private updateInputState(): void {
@@ -614,6 +649,15 @@ export class Game {
 
   public dispose(): void {
     this.stop();
+
+    // Remove all event listeners
+    window.removeEventListener('keydown', this.boundKeyDownHandler);
+    window.removeEventListener('keyup', this.boundKeyUpHandler);
+    window.removeEventListener('mousemove', this.boundMouseMoveHandler);
+    window.removeEventListener('mousedown', this.boundMouseDownHandler);
+    window.removeEventListener('mouseup', this.boundMouseUpHandler);
+    window.removeEventListener('contextmenu', this.boundContextMenuHandler);
+    window.removeEventListener('blur', this.boundBlurHandler);
 
     // Dispose vehicles
     this.vehicles.forEach((vehicle) => {

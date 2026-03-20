@@ -256,9 +256,12 @@ export interface NetworkMessage {
   data: unknown;
 }
 
+import { v4 as uuidv4 } from 'uuid';
+
 // Utility functions
 export function generateId(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  // Use cryptographically secure UUID v4 instead of Math.random()
+  return uuidv4();
 }
 
 export function vector3Distance(a: Vector3, b: Vector3): number {
